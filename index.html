@@ -49,23 +49,48 @@
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.3/datatables.min.js"></script>
     <script>
         $(document).ready(function () {
+            // Fungsi submit tombol cari
             $(document).on('submit', '#cari', function (event) {
+                // Cegah fungsi default submit form agar berjalan sesuai keinginan kita.
                 event.preventDefault()
+                
+                // Minimal 3 karakter untuk mendapat hasil yang tidak terlalu banyak.
                 if ($('#keyword').val().length < 3) {
                     alert('Ketik minimal 3 karakter')
                 } else {
+                    // encode url string kecamatan yang akan dicari
                     var keyword = encodeURI($('#keyword').val())
+                    
+                    // Url endpoint & parameter API. Sisipkan variabel 'keyword' dalam url parameter 'query'.
+                    // Sayangnya hanya satu opsi scope yang bisa dicari: '0' = semua, 'province' = provinsi, 'city' = kab/kota, 'disctrict' = kecamatan, 'urban' = 'kelurahan'
+                    // exact bernilai true/false, jika true maka hasil pencarian hanya yang sama persis dengan keyword
+                    // limit=0 berarti tanpa limit, pagination dihandle oleh DataTable. Tidak ada dokumentasi resmi, mungkin ada opsi offset/pagination
                     var url = 'https://api.kodeposku.com/search?query=' + keyword + '&limit=0&scope=district&exact=false'
-                    $.getJSON(url, function (data) {
+                    
+                    /**
+                     * Proses kirim request dan ambil data dari API kodeposku.com
+                     *
+                     * Step:
+                     * 1. Kirim request dengan $.getJSON(). Dokumentasi https://api.jquery.com/jquery.getjson/
+                     * 2. Tampilkan elemen-elemen yang dibutuhkan.
+                     * 3. Buat tabel dengan bantuan DataTable (https://datatables.net/manual/) dan render kolom pertama menjadi tombol copy kodepos dengan bantuan Clipboard JS.
+                    */
+                    
+                    $.getJSON(url, function (data) { // function(data){...} hanya dijalankan jika get API berhasil
+                        // tampilkan elemen #info & #table (sebelumnya display:none)
                         $('#info').show()
                         $('#tabel').show()
+                        
+                        // destroy tabel jika tabel sudah digenerate dari pencarian sebelumnya
                         if ($.fn.dataTable.isDataTable('#tabel')) {
                             $("#tabel").dataTable().fnDestroy()
                         }
+                        
+                        // generate dan modifikasi tampilan tabel
                         $('#tabel').DataTable({
-                            dom: "tip",
-                            data: data.results,
-                            columns: [
+                            dom: "tip", // Menampilkan beberapa elemen saja (https://datatables.net/reference/option/dom/)
+                            data: data.results, // Data yang digunakan dalam tabel adalah 'data' json pada getJSON. Dipersempit pada subdata 'results' (menyesuaikan struktur json dari kodeposku.com)
+                            columns: [ // Mapping urutan data json dalam tabel
                                 { title: "Kode Pos", data: "postal_code" },
                                 { title: "Kelurahan", data: "urban" },
                                 { title: "Kecamatan", data: "district" },
@@ -74,12 +99,14 @@
                             ],
                             columnDefs: [
                                 {
+                                    // Ubah kolom pertama render tombol dengan fungsi copy (ClipboardJS)
                                     render: function (data, type, row) {
                                         return '<button class="btn btn-sm btn-success copy" data-clipboard-text="' + data + '">' + data + '</button>'
                                     },
-                                    targets: 0
+                                    targets: 0 // target kolom yang dirender (0 = kolom pertama)
                                 }
                             ],
+                            // Buat dropdown filter di bawah tabel (https://datatables.net/examples/api/multi_filter_select.html)
                             initComplete: function () {
                                 this.api().columns().every( function () {
                                     var column = this;
@@ -104,7 +131,8 @@
                     })
                 }
             })
-
+            
+            // Buat instance ClipboardJS untuk diterapkan pada elemen dengan class="copy"
             new ClipboardJS('.copy');
         })
     </script>
