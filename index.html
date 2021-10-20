@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs5/dt-1.11.3/datatables.min.css" />
+    <title>Cari Kodepos</title>
+</head>
+
+<body>
+    <div class="container p-5">
+        <div class="row mb-3">
+            <form id="cari" method="get">
+                <label for="kec" class="col-sm-2 col-form-label">Kecamatan :</label>
+                <div class="col-sm-8">
+                    <input type="text" id="keyword" class="form-control mb-3" id="kec">
+                </div>
+                <div class="col-sm-2">
+                    <button type="submit" class="btn btn-primary mb-3 px-5">Cari</button>
+                </div>
+            </form>
+        </div>
+        <div class="row mb-3 small" id="info" style="display: none;">
+            Klik tombol hijau kode pos untuk meng-copy.<br>
+            Jika hasil terlalu banyak, ada filter di bawah tiap kolom.
+        </div>
+        <div class="table-responsive">
+            <table id="tabel" class="table table-sm table-striped small" width="100%" style="display: none;">
+                <tfoot>
+                    <tr>
+                        <th>Kode Pos</th>
+                        <th>Kelurahan</th>
+                        <th>Kecamatan</th>
+                        <th>Kota</th>
+                        <th>Provinsi</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"
+        integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs5/dt-1.11.3/datatables.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $(document).on('submit', '#cari', function (event) {
+                event.preventDefault()
+                if ($('#keyword').val().length < 3) {
+                    alert('Ketik minimal 3 karakter')
+                } else {
+                    var keyword = encodeURI($('#keyword').val())
+                    var url = 'https://api.kodeposku.com/search?query=' + keyword + '&limit=0&scope=district&exact=false'
+                    $.getJSON(url, function (data) {
+                        $('#info').show()
+                        $('#tabel').show()
+                        if ($.fn.dataTable.isDataTable('#tabel')) {
+                            $("#tabel").dataTable().fnDestroy()
+                        }
+                        $('#tabel').DataTable({
+                            dom: "tip",
+                            data: data.results,
+                            columns: [
+                                { title: "Kode Pos", data: "postal_code" },
+                                { title: "Kelurahan", data: "urban" },
+                                { title: "Kecamatan", data: "district" },
+                                { title: "Kota", data: "city" },
+                                { title: "Provinsi", data: "province" },
+                            ],
+                            columnDefs: [
+                                {
+                                    render: function (data, type, row) {
+                                        return '<button class="btn btn-sm btn-success copy" data-clipboard-text="' + data + '">' + data + '</button>'
+                                    },
+                                    targets: 0
+                                }
+                            ],
+                            initComplete: function () {
+                                this.api().columns().every( function () {
+                                    var column = this;
+                                    var select = $('<select><option value=""></option></select>')
+                                        .appendTo( $(column.footer()).empty() )
+                                        .on( 'change', function () {
+                                            var val = $.fn.dataTable.util.escapeRegex(
+                                                $(this).val()
+                                            );
+                    
+                                            column
+                                                .search( val ? '^'+val+'$' : '', true, false )
+                                                .draw();
+                                        } );
+                    
+                                    column.data().unique().sort().each( function ( d, j ) {
+                                        select.append( '<option value="'+d+'">'+d+'</option>' )
+                                    } );
+                                } );
+                            }
+                        })
+                    })
+                }
+            })
+
+            new ClipboardJS('.copy');
+        })
+    </script>
+</body>
+
+</html>
